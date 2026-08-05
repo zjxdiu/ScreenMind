@@ -67,7 +67,8 @@ def is_inference_active() -> bool:
 
 
 def _base_url() -> str:
-    return settings.llama_server_host.rstrip("/")
+    """Get the base URL for the custom LLM API endpoint."""
+    return settings.llm_api_base_url.rstrip("/")
 
 
 def chat(
@@ -77,7 +78,7 @@ def chat(
     timeout: float = INFERENCE_TIMEOUT,
 ) -> str:
     """
-    Send a chat completion request to llama-server.
+    Send a chat completion request to custom LLM API endpoint.
 
     Messages follow OpenAI format:
     [{"role": "user", "content": "text"}]
@@ -92,12 +93,12 @@ def chat(
     """
     global _active_client
 
-    # Clear cancel flag at start of every request — prevents stale cancellation
-    # from a previous cancel_current_inference() call that had nothing to cancel
+    # Clear cancel flag at start of every request
     _cancel_event.clear()
 
-    url = f"{_base_url()}/v1/chat/completions"
+    url = f"{_base_url()}/chat/completions"
     payload = {
+        "model": settings.llm_model_name,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
@@ -109,7 +110,10 @@ def chat(
         _active_client = client
 
     try:
-        response = client.post(url, json=payload)
+        headers = {}
+        if settings.llm_api_key:
+            headers["Authorization"] = f"Bearer {settings.llm_api_key}"
+        response = client.post(url, json=payload, headers=headers)
         response.raise_for_status()
         data = response.json()
         return data["choices"][0]["message"]["content"]
@@ -171,7 +175,10 @@ def transcribe_audio(
     timeout: float = INFERENCE_TIMEOUT,
 ) -> str:
     """
-    Transcribe audio using Gemma 4's native audio encoder.
+    Transcribe audio using custom LLM API endpoint.
+    
+    NOTE: Audio transcription requires the API endpoint to support audio input.
+    If your API does not support audio, this will raise an error.
 
     Args:
         audio_bytes: Raw audio file bytes (WAV format recommended)
@@ -181,28 +188,14 @@ def transcribe_audio(
         max_tokens: Max response tokens
 
     Raises:
-        ValueError: If the active model doesn't support audio input.
+        ValueError: If the API endpoint doesn't support audio input.
     """
-    # Guard: check if active model supports audio
-    from screenmind.engine import model_manager
-    if not model_manager.is_audio_capable():
-        active = model_manager.get_active_model() or "unknown"
-        raise ValueError(
-            f"Model '{active}' does not support audio input. "
-            f"Switch to Gemma 4 E2B or E4B for voice memo and meeting transcription."
-        )
-
-    b64_audio = base64.b64encode(audio_bytes).decode()
-
-    messages = [{
-        "role": "user",
-        "content": [
-            {"type": "text", "text": prompt},
-            {"type": "input_audio", "input_audio": {"data": b64_audio, "format": audio_format}},
-        ],
-    }]
-
-    return chat(messages, temperature=temperature, max_tokens=max_tokens, timeout=timeout)
+    # For now, audio is marked as unavailable since most custom APIs don't support it
+    # This can be enabled later when a more robust workflow is implemented
+    raise ValueError(
+        "Audio transcription is not yet supported with custom LLM API endpoints. "
+        "This feature will be added in a future update with a more robust workflow."
+    )
 
 
 def generate(
@@ -220,10 +213,13 @@ def generate(
 
 
 def is_available() -> bool:
-    """Check if llama-server is reachable and healthy."""
+    """Check if custom LLM API endpoint is reachable and healthy."""
     try:
-        url = f"{_base_url()}/health"
-        response = httpx.get(url, timeout=HEALTH_TIMEOUT)
+        url = f"{_base_url()}/models"
+        headers = {}
+        if settings.llm_api_key:
+            headers["Authorization"] = f"Bearer {settings.llm_api_key}"
+        response = httpx.get(url, timeout=HEALTH_TIMEOUT, headers=headers)
         return response.status_code == 200
     except Exception:
         return False
@@ -232,12 +228,15 @@ def is_available() -> bool:
 def get_server_status() -> dict:
     """Get detailed server status."""
     try:
-        url = f"{_base_url()}/health"
-        response = httpx.get(url, timeout=HEALTH_TIMEOUT)
+        url = f"{_base_url()}/models"
+        headers = {}
+        if settings.llm_api_key:
+            headers["Authorization"] = f"Bearer {settings.llm_api_key}"
+        response = httpx.get(url, timeout=HEALTH_TIMEOUT, headers=headers)
         if response.status_code == 200:
             return {"status": "ok", "detail": response.json() if response.text else {}}
         return {"status": "error", "detail": f"HTTP {response.status_code}"}
     except httpx.ConnectError:
-        return {"status": "unreachable", "detail": "Cannot connect to llama-server"}
+        return {"status": "unreachable", "detail": "Cannot connect to LLM API endpoint"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}

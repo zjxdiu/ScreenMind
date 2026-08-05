@@ -123,6 +123,20 @@ class Settings(BaseSettings):
     )
 
     # ── Model ────────────────────────────────────────────────────────────
+    # Custom LLM API endpoint (OpenAI-compatible Chat Completion API)
+    llm_api_base_url: str = Field(
+        default="http://localhost:11434/v1",
+        description="Base URL for custom LLM API endpoint (OpenAI-compatible)",
+    )
+    llm_api_key: Optional[str] = Field(
+        default=None,
+        description="API key for custom LLM endpoint (leave empty if not required)",
+    )
+    llm_model_name: str = Field(
+        default="gemma4:e2b",
+        description="Model name to use with custom LLM API",
+    )
+    # Legacy fields kept for settings.json compatibility
     gemma_mode: Literal["local", "api"] = Field(
         default="local",
         description="'local' for llama-server, 'api' for Google AI Studio (sends data to Google)",
@@ -133,7 +147,7 @@ class Settings(BaseSettings):
     )
     active_model: str = Field(
         default="gemma-4-e2b",
-        description="Active model key for llama-server",
+        description="Active model key (legacy, kept for compat)",
     )
     ollama_host: str = Field(
         default="http://localhost:11434",
@@ -141,11 +155,11 @@ class Settings(BaseSettings):
     )
     llama_server_host: str = Field(
         default="http://127.0.0.1:5809",
-        description="llama-server URL",
+        description="llama-server URL (legacy, kept for compat)",
     )
     llama_server_port: int = Field(
         default=5809,
-        description="llama-server port",
+        description="llama-server port (legacy, kept for compat)",
     )
     google_api_key: Optional[str] = Field(
         default=None,

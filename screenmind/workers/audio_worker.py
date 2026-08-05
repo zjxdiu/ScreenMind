@@ -559,6 +559,11 @@ class AudioWorker:
                 wf.writeframes(audio_int16.tobytes())
             wav_bytes = buf.getvalue()
 
+            # NOTE: Audio transcription is currently disabled for custom LLM API endpoints.
+            # This feature will be re-enabled when a more robust workflow is implemented.
+            logger.warning("Audio transcription is temporarily unavailable - custom LLM API does not support audio input yet")
+            return False
+            
             from screenmind.engine import llm_client
             text = llm_client.transcribe_audio(
                 audio_bytes=wav_bytes,
