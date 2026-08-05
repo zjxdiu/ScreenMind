@@ -30,19 +30,18 @@ logger = logging.getLogger("screenmind.main")
 
 
 def check_llama_server() -> bool:
-    """Check if llama-server is reachable and ready for inference."""
+    """Check if LLM API endpoint is reachable and ready for inference."""
     from screenmind.engine import llm_client
 
     status = llm_client.get_server_status()
     if status["status"] == "ok":
-        logger.info(f"OK - llama-server online at {settings.llama_server_host}")
+        logger.info(f"OK - LLM API online at {settings.llm_api_base_url}")
         return True
     elif status["status"] == "unreachable":
-        logger.error(f"FAIL - Cannot reach llama-server at {settings.llama_server_host}")
-        logger.info(f"Start it with: llama-server -hf unsloth/gemma-4-E2B-it-GGUF:Q4_K_M --mmproj-auto -ngl 99 --port {settings.llama_server_port}")
+        logger.error(f"FAIL - Cannot reach LLM API at {settings.llm_api_base_url}")
         return False
     else:
-        logger.info(f"WARN - llama-server issue: {status['detail']}")
+        logger.info(f"WARN - LLM API issue: {status['detail']}")
         return False
 
 
@@ -173,33 +172,30 @@ async def main():
         _safe_print("=" * 70)
     _safe_print()
 
-    # ── llama-server setup ─────────────────────────────────────────────
-    # Check if llama-server binary is available; offer to install if missing
-    from screenmind.setup_llama import ensure_llama_server
-    llama_binary_available = ensure_llama_server()
-
-    # ── Health checks ────────────────────────────────────────────────
-    from screenmind.engine import model_manager
-    if llama_binary_available:
-        # Binary exists — check if server is running, start if not
-        if not check_llama_server():
-            logger.info("llama-server not running — starting automatically...")
-            llm_server_ok = model_manager.start_server(settings.active_model, timeout=120)
-        else:
-            llm_server_ok = True
+    # ── LLM API health check ─────────────────────────────────────────────
+    from screenmind.engine import model_manager, llm_client
+    
+    # Check if custom LLM API endpoint is reachable
+    if llm_client.is_available():
+        logger.info(f"OK - LLM API endpoint online at {settings.llm_api_base_url}")
+        llm_api_ok = True
     else:
-        llm_server_ok = False
+        logger.warning(f"Cannot connect to LLM API endpoint at {settings.llm_api_base_url}")
+        logger.warning("Screenshots will be captured but NOT analyzed until API is available.")
+        logger.warning("The dashboard and API will still work with existing data.")
+        llm_api_ok = False
 
     check_disk_space()
-    if not llm_server_ok:
+    if not llm_api_ok:
         _safe_print()
-        logger.warning("Starting without Gemma 4 -- screenshots will be captured")
-        logger.warning("but NOT analyzed until llama-server is available.")
-        logger.warning("The dashboard and API will still work with existing data.")
-        if not llama_binary_available:
-            logger.info("Run 'python -m screenmind.setup_llama' to install llama-server.")
+        _safe_print("=" * 70)
+        _safe_print("WARNING: LLM API endpoint unreachable!")
+        _safe_print(f"   Base URL: {settings.llm_api_base_url}")
+        _safe_print(f"   Model: {settings.llm_model_name}")
+        _safe_print("   Set LLM_API_BASE_URL, LLM_API_KEY (if required), and LLM_MODEL_NAME")
+        _safe_print("   in your .env file or environment variables.")
+        _safe_print("=" * 70)
         _safe_print()
-    _safe_print()
 
     # ── Shared services ──────────────────────────────────────────────
     db = Database()
@@ -272,6 +268,12 @@ async def main():
         # Transcribe in background thread (don't block hotkey handler)
         def _transcribe():
             try:
+                # NOTE: Audio transcription is currently disabled for custom LLM API endpoints.
+                # This feature will be re-enabled when a more robust workflow is implemented.
+                raise ValueError(
+                    "Voice memos are temporarily unavailable. "
+                    "Audio transcription support for custom LLM APIs will be added in a future update."
+                )
                 transcript = llm_client.transcribe_audio(wav_bytes)
                 # Guard: don't write to DB if shutdown is in progress
                 if _shutdown.is_set():
