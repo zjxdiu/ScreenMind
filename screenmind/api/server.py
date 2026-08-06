@@ -54,13 +54,16 @@ def create_app(database: Database, capture_worker=None, analysis_worker=None, em
     # Add auth middleware
     app.add_middleware(AuthMiddleware)
 
-    # Use provided embedder or create one
+    # Use provided embedder (already checked at startup in main.py)
     if embedder is None:
         try:
             embedder = Embedder()
-            embedder._ensure_model()
+            if not embedder.is_available:
+                logger.warning("Embedding API unavailable — search will be limited")
+                embedder = None
         except Exception:
-            logger.warning("Embedder unavailable — search will be limited")
+            logger.warning("Embedder initialization failed — search will be limited")
+            embedder = None
 
     # Initialize shared dependencies for all route modules
     deps.init(database, embedder, capture_worker, analysis_worker, audio_worker)

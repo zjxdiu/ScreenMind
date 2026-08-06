@@ -49,11 +49,9 @@ logger = logging.getLogger("screenmind.mcp_server")
 # ── Initialize ──────────────────────────────────────────────────────────
 db = Database()
 embedder = Embedder()
-try:
-    embedder._ensure_model()
-except Exception:
-    logger.warning("Embedder unavailable — semantic search disabled")
-    embedder = None
+if not embedder.is_available:
+    logger.critical("Embedding API unavailable — semantic search disabled and MCP server cannot start")
+    raise RuntimeError("Embedding API is required but unavailable")
 
 mcp = FastMCP("ScreenMind")
 
@@ -79,47 +77,46 @@ def search_screen(query: str, limit: int = 10) -> str:
     results = []
     seen_ids = set()
 
-    # 1. Semantic search (if embedder available)
-    if embedder:
-        rows = conn.execute(
-            """
-            SELECT id, timestamp, app_name, category, summary, details,
-                   visible_text, bookmarked, embedding, organized_text
-            FROM activities
-            WHERE analyzed = 1 AND embedding IS NOT NULL
-            ORDER BY timestamp DESC
-            LIMIT 500
-            """,
-        ).fetchall()
+    # 1. Semantic search using embedder (always available since MCP server requires it)
+    rows = conn.execute(
+        """
+        SELECT id, timestamp, app_name, category, summary, details,
+               visible_text, bookmarked, embedding, organized_text
+        FROM activities
+        WHERE analyzed = 1 AND embedding IS NOT NULL
+        ORDER BY timestamp DESC
+        LIMIT 500
+        """,
+    ).fetchall()
 
-        activities_data = []
-        embeddings_list = []
+    activities_data = []
+    embeddings_list = []
 
-        for row in rows:
-            d = dict(row)
-            emb = db._decode_embedding(d.get("embedding"))
-            if emb:
-                d.pop("embedding", None)
-                activities_data.append(d)
-                embeddings_list.append(emb)
+    for row in rows:
+        d = dict(row)
+        emb = db._decode_embedding(d.get("embedding"))
+        if emb:
+            d.pop("embedding", None)
+            activities_data.append(d)
+            embeddings_list.append(emb)
 
-        if embeddings_list:
-            matches = embedder.search(query, embeddings_list, top_k=limit)
-            for idx, score in matches:
-                item = activities_data[idx]
-                results.append({
-                    "id": item["id"],
-                    "timestamp": item["timestamp"],
-                    "app": item["app_name"],
-                    "category": item["category"],
-                    "summary": item["summary"],
-                    "details": item["details"],
-                    "organized_text": (item.get("organized_text") or "")[:500],
-                    "bookmarked": bool(item.get("bookmarked")),
-                    "relevance": round(score, 3),
-                    "match": "semantic",
-                })
-                seen_ids.add(item["id"])
+    if embeddings_list:
+        matches = embedder.search(query, embeddings_list, top_k=limit)
+        for idx, score in matches:
+            item = activities_data[idx]
+            results.append({
+                "id": item["id"],
+                "timestamp": item["timestamp"],
+                "app": item["app_name"],
+                "category": item["category"],
+                "summary": item["summary"],
+                "details": item["details"],
+                "organized_text": (item.get("organized_text") or "")[:500],
+                "bookmarked": bool(item.get("bookmarked")),
+                "relevance": round(score, 3),
+                "match": "semantic",
+            })
+            seen_ids.add(item["id"])
 
     # 2. FTS5 keyword fallback
     try:

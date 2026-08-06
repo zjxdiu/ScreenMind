@@ -151,13 +151,19 @@ cp .env.example .env
 Edit `.env` with your LLM API configuration:
 
 ```ini
-# Custom LLM API Endpoint (OpenAI-compatible)
+# Custom LLM API Endpoint (OpenAI-compatible Chat Completions)
 LLM_API_BASE_URL=http://localhost:11434/v1    # e.g., Ollama, vLLM, or any OpenAI-compatible server
 LLM_API_KEY=your-api-key-if-required          # Leave empty if not required
 LLM_MODEL_NAME=gemma4:e2b                     # Model identifier to use
 
-# Embedding Model (always local)
-# MiniLM-L6-v2 runs locally for semantic search - no configuration needed
+# Embedding API Endpoint (OpenAI-compatible Embeddings)
+# Uses all-MiniLM-L6-v2 model (384 dimensions) - fixed for vector compatibility
+EMBED_API_BASE_URL=http://localhost:11434/v1  # Can be same or different from LLM endpoint
+EMBED_API_KEY=                                # API key for embedding endpoint (if required)
+EMBED_API_BATCH_SIZE=8                        # Batch size for embedding API calls (1-32)
+
+# LLM Concurrency (for parallel task processing)
+LLM_API_CONCURRENCY=1                         # Number of concurrent LLM API calls (1-10)
 
 # Capture Settings
 CAPTURE_INTERVAL=40
@@ -168,7 +174,7 @@ DATA_DIR=~/.screenmind
 PERFORMANCE_MODE=balanced    # minimal, balanced, or maximum
 
 # Analysis Mode
-ANALYSIS_MODE=fast           # fast, balanced, or accurate
+ANALYSIS_MODE=fast           # fast, balanced
 
 # Privacy
 BLOCKED_APPS=
