@@ -1,10 +1,17 @@
 <div align="center">
 
+### Read before
+This repo is a fork of the original [ayushh0110/ScreenMind](https://github.com/ayushh0110/ScreenMind) 
+All new code and changes are done using AI tools, mainly [qwen-coder](https://coder.qwen.ai/)
+The main focus here is to separate LLM inference backend and use any OpenAI chat completions API, since I want to run this on a miniPC without dedicated GPU, and use another high-end desktop to do the heavy-lifting model inferencing for it.
+
+
 <br>
 
 <img src="https://img.shields.io/badge/🧠_ScreenMind-Your_AI_Memory-8B5CF6?style=for-the-badge&labelColor=0a0e1a" alt="ScreenMind" height="40">
 
 <br><br>
+
 
 **Captures your screen → Analyzes with LLM → Builds a searchable AI memory**<br>
 **100% private. Your data stays local.**
