@@ -6,23 +6,19 @@
 
 <br><br>
 
-**Captures your screen → Analyzes with Gemma 4 → Builds a searchable AI memory**<br>
-**100% local. 100% private. Zero cloud dependencies.**
+**Captures your screen → Analyzes with LLM → Builds a searchable AI memory**<br>
+**100% private. Your data stays local.**
 
 <br>
 
-[![PyPI](https://img.shields.io/pypi/v/screenmind?style=flat-square&logo=pypi&logoColor=white&label=PyPI)](https://pypi.org/project/screenmind/)
 [![CI](https://github.com/ayushh0110/ScreenMind/actions/workflows/ci.yml/badge.svg)](https://github.com/ayushh0110/ScreenMind/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/ayushh0110/ScreenMind/graph/badge.svg)](https://codecov.io/gh/ayushh0110/ScreenMind)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![Gemma 4 E2B](https://img.shields.io/badge/Gemma_4-E2B_Vision+Audio-8B5CF6?style=flat-square&logo=google&logoColor=white)](https://ai.google.dev/gemma)
-[![llama.cpp](https://img.shields.io/badge/llama.cpp-Local_Inference-333?style=flat-square)](https://github.com/ggerganov/llama.cpp)
 [![License MIT](https://img.shields.io/badge/License-MIT-10B981?style=flat-square)](LICENSE)
 [![MCP Ready](https://img.shields.io/badge/MCP-Claude_%7C_Cursor_%7C_VSCode-F59E0B?style=flat-square)](MCP_SETUP.md)
 
 <br>
 
-[**Features**](#-features) · [**Comparison**](#-how-screenmind-compares) · [**Gemma 4 Deep Dive**](#-how-gemma-4-is-used) · [**Quick Start**](#-quick-start) · [**Architecture**](#-architecture) · [**Agent Platform**](#-agent-platform) · [**MCP**](#-mcp-server-claude--cursor--vs-code) · [**API**](#-api-reference)
+[**Features**](#-features) · [**Quick Start**](#-quick-start) · [**Architecture**](#-architecture) · [**Agent Platform**](#-agent-platform) · [**MCP**](#-mcp-server-claude--cursor--vs-code) · [**API**](#-api-reference)
 
 <br>
 
@@ -42,7 +38,7 @@
 
 <br>
 
-> **Microsoft showed the world wants screen-aware AI with Recall.** But Recall stores data in plaintext, sends telemetry, and was met with massive privacy backlash. ScreenMind is the open-source, privacy-first alternative — every screenshot analyzed, every insight generated, every search result — all computed locally using Gemma 4's multimodal capabilities.
+> **Microsoft showed the world wants screen-aware AI with Recall.** But Recall stores data in plaintext, sends telemetry, and was met with massive privacy backlash. ScreenMind is the open-source, privacy-first alternative — every screenshot analyzed, every insight generated, every search result — all computed locally.
 >
 > It's not just a screen recorder. It's an **AI memory** you can talk to, search through, and build automations on top of.
 
@@ -54,25 +50,26 @@
 ### 🧠 Core Intelligence
 
 - **📸 Smart Capture** — Content-change detection, not a fixed timer. Captures when your screen *actually* changes.
-- **🔬 Gemma 4 Vision Analysis** — Every screenshot analyzed: app detection, activity categorization, mood, scene description, spatial layout regions.
-- **🔍 Hybrid Search** — Semantic embeddings (MiniLM) + FTS5 keyword search. Find anything by *meaning*, not just keywords.
+- **🔬 LLM Vision Analysis** — Every screenshot analyzed: app detection, activity categorization, mood, scene description, spatial layout regions. Uses any OpenAI-compatible API endpoint.
+- **🔍 Hybrid Search** — Semantic embeddings (MiniLM-L6-v2 local) + FTS5 keyword search. Find anything by *meaning*, not just keywords.
 - **💬 Chat with Memory** — Conversational RAG with follow-up support. Ask "what did Alex say on Discord?" → get the actual message.
 - **🧠 Model Hub** — In-app model download with live progress tracking. Chat and Summary are locked with witty brain animations until the model is ready — then auto-unlock. No terminal needed.
-- **🎙️ Voice Memos** — Hold `Ctrl+Shift+V` → Gemma 4's native audio encoder transcribes. Screenshot captured alongside.
-- **🎤 Meeting Transcription** — Auto-detects Zoom/Teams/Meet, records audio, transcribes, generates structured summaries.
+- **🎙️ Voice Memos** — Hold `Ctrl+Shift+V` → transcribe audio. Screenshot captured alongside. *(Note: Audio transcription feature temporarily disabled - will be re-enabled with a more robust workflow in the future)*
+- **🎤 Meeting Transcription** — Auto-detects Zoom/Teams/Meet, records audio, transcribes, generates structured summaries. *(Note: Temporarily disabled)*
 - **📊 Analytics Dashboard** — Category breakdown, top apps, hourly heatmap, meeting stats, focus metrics.
 - **⏪ Day Rewind** — Timelapse playback of your entire day with play/pause/scrub/speed controls.
 
 ### ⚡ Performance
 
-- **Three Analysis Modes** — Accurate (~76s, deep thinking + layout), Balanced (~40s, thinking), or Fast (~12s, no thinking). You choose.
+- **Three Analysis Modes** — Accurate (deep thinking + layout), Balanced (thinking), or Fast (no thinking). You choose.
 - **Per-App pHash Cache** — 3-tier caching with app-aware staleness. Communication apps refresh faster than IDEs. Significantly fewer inference calls.
 - **Chat-First GPU Priority** — Chat cancels in-flight analysis instantly. GPU freed in <1s.
 - **Auto-Pause Heavy Apps** — Games, video editors, 3D software detected → capture pauses automatically.
 
 ### 🔒 Privacy & Security
 
-- **100% Local** — All data stays on your machine. Zero network calls after initial model download. No telemetry. Ever.
+- **100% Local Embeddings** — MiniLM-L6-v2 runs locally for semantic search.
+- **Flexible LLM Backend** — Use any OpenAI-compatible API (local or cloud). You control where your data goes.
 - **Sensitive Data Filter** — Auto-redacts credit cards, SSNs, API keys, passwords before storage.
 - **Encryption at Rest** — AES encryption for screenshots (Fernet + OS keyring).
 - **Dashboard PIN Lock** — Session-based auth with configurable auto-lock timeout.
@@ -107,147 +104,115 @@
 
 ---
 
-## 📊 How ScreenMind Compares
-
-| Feature | **ScreenMind** | **Screenpipe** | **Microsoft Recall** |
-|---|---|---|---|
-| **License** | ✅ MIT (fully open-source) | Source-available (commercial license required for business use) | Proprietary |
-| **Cost** | ✅ Free forever | Free (personal) / Paid (commercial) | Requires $1000+ Copilot+ PC |
-| **Privacy** | ✅ Zero network calls. Zero telemetry. Ever. | Local-first, optional cloud | Telemetry opt-in. Data stayed local after backlash. |
-| **Min. hardware** | ✅ Any GPU ≥4GB VRAM (or CPU-only) | 8GB RAM, modern CPU | 40 TOPS NPU + 16GB RAM + BitLocker + Windows Hello |
-| **AI architecture** | ✅ Single model — Gemma 4 does vision + audio + reasoning | Multiple models — OCR + Whisper + external LLM | Proprietary NPU model |
-| **Audio/meetings** | ✅ Native — Gemma 4 audio encoder (no Whisper needed) | Whisper-based transcription | ❌ Not supported |
-| **Smart capture** | ✅ pHash deduplication + idle detection + auto-pause for games | Event-driven (app switches, clicks) | Periodic snapshots |
-| **Search** | ✅ Semantic (MiniLM embeddings) + FTS5 keyword — hybrid fusion | Semantic + keyword + a11y tree | Semantic only (NPU) |
-| **Chat with memory** | ✅ Full conversational RAG with follow-ups and vision fallback | ❌ | ❌ |
-| **Agent system** | ✅ No-code Markdown agents + Python SDK + MCP server | Pipes (TypeScript) + MCP | ❌ |
-| **In-app Model Hub** | ✅ Download, switch, manage models from UI — no terminal | ❌ | ❌ |
-| **Encryption** | ✅ AES (Fernet) + OS keyring | Optional | TPM + BitLocker |
-| **PII auto-redaction** | ✅ Transparent regex — CC (Luhn-validated), SSN, API keys, passwords | AI-based PII model | Content filtering |
-| **Integrations** | ✅ Obsidian · Notion · Webhooks · MCP | MCP, SDK (Tauri/Electron/Swift) | Windows ecosystem only |
-| **Platform** | ✅ Windows · macOS · Linux (X11 + Wayland) | Windows · macOS · Linux | Windows 11 only (Copilot+ PCs) |
-
-> **TL;DR:** ScreenMind is the only option that's fully MIT open-source, runs on any hardware (including a $150 GPU), handles vision + audio + reasoning with a single local model, and lets you actually *chat* with your screen memory.
-
----
-
-## 🧠 How Gemma 4 Is Used
-
-Gemma 4 E2B is not a bolt-on — it's architecturally load-bearing. ScreenMind uses **all three modalities**:
-
-### 1. Vision — Screenshot Analysis
-Every screenshot is sent to Gemma 4 with OCR context. It returns structured JSON:
-- App name, activity category, summary, detailed context
-- Mood classification, confidence score
-- Rich scene description (every visible element inventoried)
-- Layout regions (sidebar, chat area, toolbar boundaries)
-
-**Three modes** *(benchmarked on GTX 1650 4GB — scales dramatically with better GPUs):*
-- **Accurate** — single call with thinking (~76s). Best layout detection.
-- **Balanced** — thinking enabled, analysis-only (~40s). Richer descriptions than Fast.
-- **Fast** — no-thinking prefill trick (~12s). Layout via OCR clustering instead.
-
-<details>
-<summary><b>⚡ GPU Scaling — How fast on your hardware?</b></summary>
-
-<br>
-
-The numbers above are from a **GTX 1650 (4GB VRAM)** — a worst-case scenario where the model spills to CPU RAM. With more VRAM, the entire model fits on GPU and inference speeds up dramatically:
-
-| GPU | VRAM | Bandwidth | Regime | ~Fast Mode | Why |
-|---|---|---|---|---|---|
-| **GTX 1650** *(baseline)* | 4 GB | ~190 GB/s | spilling | ~12s | CPU-bottlenecked, partial offload |
-| **RTX 3060** | 12 GB | ~360 GB/s | full fit | ~3-4s | Spill eliminated — the big jump |
-| **RTX 4060 Ti** | 16 GB | ~290 GB/s | full fit | ~2-3s | Fits easily, more compute for vision |
-| **RTX 3090** | 24 GB | ~935 GB/s | full fit | ~1-2s | High bandwidth |
-| **RTX 4090** | 24 GB | ~1000 GB/s | full fit | ~1s | Top consumer card |
-
-> **Key insight:** The biggest jump is from "spilling" (model doesn't fit in VRAM) to "full fit" (it does). Any GPU with ≥6GB VRAM should run E2B entirely on GPU and see 3-5x speedup over the baseline.
-
-</details>
-
-### 2. Audio — Voice Memos & Meeting Transcription
-Gemma 4 E2B has a native audio encoder. ScreenMind uses it for:
-- Voice memo transcription (hold hotkey → speak → release)
-- Meeting transcription (15s chunks, map-reduce summarization for long meetings)
-
-No Whisper dependency. One model handles everything.
-
-### 3. Reasoning — Summaries, Chat, Agents
-- **Daily summaries** with deep reasoning (`think=True`)
-- **Chat answers** grounded in actual screen data (text-first RAG with vision fallback)
-- **Agent execution** — Gemma processes markdown agent prompts with injected screen data
-
-### Why E2B Specifically?
-
-| Constraint | Why It Rules Out Alternatives |
-|---|---|
-| Must run **continuously in background** | Rules out 12B+ models (too heavy) |
-| Must understand **screenshots natively** | Rules out text-only models |
-| Must stay **100% local** for privacy | Rules out cloud APIs |
-| Must handle **audio natively** | Rules out models without audio encoder |
-| Must be **fast enough** for 30s cycle | E2B: 12-76s on GTX 1650, ~1-4s on RTX 3060+ |
-
-Gemma 4 E2B is the only model that checks all five boxes.
-
----
-
 ## 🚀 Quick Start
 
-> **Requirements:** Python 3.10+ · GPU recommended (4GB+ VRAM) · ~5GB disk for model
+> **Requirements:** Python 3.10+ · GPU recommended (4GB+ VRAM) for local LLM servers · Disk space for model weights (varies by model)
 
-#### 1️⃣ Install
-
-```bash
-pip install screenmind
-```
-
-#### 2️⃣ Run
-
-```bash
-screenmind
-```
-
-#### 3️⃣ Open → **http://127.0.0.1:7777** 
-
-On first run, ScreenMind will:
-- Prompt to install AI packages (~2.5GB one-time download)
-- Auto-detect your GPU and download `llama-server` if not found (CUDA/CPU auto-selected)
-- Open the **Model Hub** — download Gemma 4 E2B GGUF (~5GB) with progress tracking right in the UI
-- Chat and Summary stay locked (🧠💤 *"I need my brain to think!"*) until the model is ready, then auto-unlock
-- Start `llama-server` in background
-- Show the welcome screen to set up an optional PIN
-- Create `~/.screenmind/` for data storage
-
-<details>
-<summary><b>🔧 Developer Install (from source)</b></summary>
-
-<br>
+#### 1️⃣ Clone the Repository
 
 ```bash
 git clone https://github.com/ayushh0110/ScreenMind.git
 cd ScreenMind
-
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # macOS/Linux
-
-pip install -e ".[ai,dev]"
 ```
 
-</details>
+#### 2️⃣ Create Virtual Environment
 
-<details>
-<summary><b>⚙️ Optional: Configure via .env</b></summary>
+**Windows:**
+```bash
+python -m venv venv
+venv\Scripts\activate
+```
 
-<br>
+**macOS/Linux:**
+```bash
+python3 -m venv venv
+source venv/bin/activate
+```
+
+#### 3️⃣ Install Dependencies
+
+```bash
+pip install -e ".[ai]"
+```
+
+#### 4️⃣ Configure Environment Variables
+
+Create a `.env` file in the project root (copy from `.env.example`):
 
 ```bash
 cp .env.example .env
-# Edit capture interval, blocked apps, hotkeys, etc.
 ```
 
-Or configure everything from the **Settings** tab in the dashboard.
+Edit `.env` with your LLM API configuration:
+
+```ini
+# Custom LLM API Endpoint (OpenAI-compatible)
+LLM_API_BASE_URL=http://localhost:11434/v1    # e.g., Ollama, vLLM, or any OpenAI-compatible server
+LLM_API_KEY=your-api-key-if-required          # Leave empty if not required
+LLM_MODEL_NAME=gemma4:e2b                     # Model identifier to use
+
+# Embedding Model (always local)
+# MiniLM-L6-v2 runs locally for semantic search - no configuration needed
+
+# Capture Settings
+CAPTURE_INTERVAL=40
+SCREENSHOT_QUALITY=70
+DATA_DIR=~/.screenmind
+
+# Performance Mode
+PERFORMANCE_MODE=balanced    # minimal, balanced, or maximum
+
+# Analysis Mode
+ANALYSIS_MODE=fast           # fast, balanced, or accurate
+
+# Privacy
+BLOCKED_APPS=
+HOTKEY_BOOKMARK=ctrl+shift+b
+```
+
+> **Note:** You can also configure most settings from the **Settings** tab in the web dashboard.
+
+#### 5️⃣ Run ScreenMind
+
+```bash
+python -m screenmind
+```
+
+#### 6️⃣ Open Dashboard → **http://127.0.0.1:7777**
+
+On first run, ScreenMind will:
+- Create `~/.screenmind/` for data storage
+- Show the welcome screen to set up an optional PIN
+- Open the **Model Hub** — configure your LLM API endpoint and download required models
+- Chat and Summary features become available once the LLM is configured
+
+<details>
+<summary><b>🔧 Optional: Use with Different LLM Backends</b></summary>
+
+<br>
+
+ScreenMind supports any OpenAI-compatible API endpoint. Common setups:
+
+**Ollama (local):**
+```ini
+LLM_API_BASE_URL=http://localhost:11434/v1
+LLM_API_KEY=
+LLM_MODEL_NAME=gemma4:e2b
+```
+
+**vLLM (local GPU):**
+```ini
+LLM_API_BASE_URL=http://localhost:8000/v1
+LLM_API_KEY=
+LLM_MODEL_NAME=google/gemma-2b-it
+```
+
+**Cloud Provider:**
+```ini
+LLM_API_BASE_URL=https://api.provider.com/v1
+LLM_API_KEY=sk-your-key-here
+LLM_MODEL_NAME=gemma-2b
+```
 
 </details>
 
@@ -277,9 +242,9 @@ Or configure everything from the **Settings** tab in the dashboard.
 │  │   Worker   │                        │           │             │ │
 │  │            │                        │           ▼             │ │
 │  │ • Meeting  │                        │  ┌───────────────────┐  │ │
-│  │   detect   │                        │  │   Gemma 4 E2B     │  │ │
-│  │ • Record   │                        │  │   (via llama.cpp) │  │ │
-│  │ • Transcr. │                        │  │   Vision + Audio  │  │ │
+│  │   detect   │                        │  │   LLM API     │  │ │
+│  │ • Record   │                        │  │   (OpenAI-compatible) │  │ │
+│  │ • Transcr. │                        │  │   Vision + Text  │  │ │
 │  └────────────┘                        │  └───────────────────┘  │ │
 │                                        │           │             │ │
 │  ┌────────────┐                        │           ▼             │ │
@@ -319,15 +284,15 @@ Or configure everything from the **Settings** tab in the dashboard.
 ### Multi-Model AI Pipeline
 
 ```
-Screenshot → EasyOCR (text) → Gemma 4 E2B (understanding) → MiniLM (embeddings) → SQLite + FTS5
+Screenshot → EasyOCR (text) → LLM API (understanding) → MiniLM (embeddings) → SQLite + FTS5
                                      ↑
                               OCR text fed as context
-                              (Gemma sees image + reads text)
+                              (LLM sees image + reads text)
 ```
 
-Four AI models working in concert, with Gemma 4 as the brain:
+Four AI models working in concert, with LLM as the brain:
 1. **EasyOCR** — extracts raw screen text
-2. **Gemma 4 E2B** — understands what you're doing (vision + reasoning)
+2. **LLM API** — understands what you're doing (vision + reasoning)
 3. **MiniLM-L6-v2** — generates semantic vectors for natural language search
 4. **FTS5** — indexes text for instant keyword search
 
@@ -341,7 +306,7 @@ ScreenMind includes a full agent/plugin system. Build any automation on top of y
 
 | Mode | File Type | For | Example |
 |---|---|---|---|
-| 🤖 AI Agent | `.md` | Everyone | Write a prompt in English → Gemma runs it on your data |
+| 🤖 AI Agent | `.md` | Everyone | Write a prompt in English → LLM runs it on your data |
 | 🐍 Python Plugin | `.py` | Developers | Full code with SDK access, state persistence, LLM calls |
 
 ### Markdown Agent Example
@@ -377,7 +342,7 @@ last_count = sdk.load_state("url_count", 0)
 urls = sdk.get_urls_visited()
 sdk.save_state("url_count", len(urls))
 
-# Ask Gemma (GPU-safe — waits for idle)
+# Ask LLM (GPU-safe — waits for idle)
 insight = sdk.ask_gemma(f"Summarize these URLs: {urls}")
 print(insight)
 ```
@@ -492,9 +457,9 @@ All settings configurable via `.env`, environment variables, or the **Settings**
 
 | Layer | Technology | Why |
 |-------|-----------|-----|
-| **Vision + Audio AI** | Gemma 4 E2B (via llama.cpp) | Only model with vision + audio + reasoning that runs locally on 4GB VRAM |
-| **Inference Server** | llama-server (llama.cpp) | Direct GGUF inference, OpenAI-compatible API |
-| **OCR** | EasyOCR | Extracts screen text fed to Gemma as context |
+| **Vision + Text AI** | LLM API (OpenAI-compatible) | Only model with vision + audio + reasoning that runs locally on 4GB VRAM |
+| **Inference Server** | LLM server (LLM inference backend) | Direct GGUF inference, OpenAI-compatible API |
+| **OCR** | EasyOCR | Extracts screen text fed to LLM as context |
 | **Embeddings** | all-MiniLM-L6-v2 | 80MB, runs on CPU, 384-dim vectors for semantic search |
 | **Backend** | FastAPI + Uvicorn | Async-first, auto-generated API docs |
 | **Database** | SQLite (WAL) + FTS5 | Zero-config, concurrent reads, full-text search |
@@ -547,7 +512,7 @@ recording. For full functionality, use an X11 session or a wlroots-based composi
 screenmind/
 ├── screenmind/                    # Entry point — starts all services
 ├── config.py                  # Pydantic settings (env + runtime overrides)
-├── setup_llama.py             # Auto-detect + install llama-server
+├── LLM server setup             # Auto-detect + install LLM server
 ├── requirements.txt           # Full Python dependencies
 ├── requirements-test.txt      # Lightweight CI deps (no PyTorch)
 │   ├── main.py              # MCP server for Claude/Cursor/VS Code
@@ -562,8 +527,8 @@ screenmind/
 │   └── voice_recorder.py      # Mic recording for voice memos
 │
 │   ├── engine/                    # AI & intelligence layer
-│   ├── analyzer.py            # Gemma 4 vision analysis (dual mode)
-│   ├── llm_client.py          # llama-server client (chat, vision, audio)
+│   ├── analyzer.py            # LLM vision analysis (dual mode)
+│   ├── llm_client.py          # LLM server client (chat, vision, audio)
 │   ├── model_manager.py       # Server lifecycle, model download/switch
 │   ├── embedder.py            # MiniLM semantic embeddings
 │   ├── ocr.py                 # EasyOCR text extraction
@@ -574,7 +539,7 @@ screenmind/
 │
 │   ├── workers/                   # Background processing
 │   ├── capture_worker.py      # Smart capture loop + privacy filtering
-│   ├── analysis_worker.py     # OCR → Gemma → Layout → Embed → Store
+│   ├── analysis_worker.py     # OCR → LLM → Layout → Embed → Store
 │   └── audio_worker.py        # Meeting detection & transcription
 │
 │   ├── storage/                   # Data persistence
@@ -624,7 +589,7 @@ screenmind/
 
 | Scenario | Behavior |
 |----------|----------|
-| **llama-server not found** | Auto-downloads correct binary from GitHub releases (CUDA/CPU auto-detected). Checks disk space first. |
+| **LLM server not found** | Auto-downloads correct binary from GitHub releases (CUDA/CPU auto-detected). Checks disk space first. |
 | **Model not downloaded** | Model Hub shows lock screen with download cards. Progress tracked in UI. Chat/Summary locked until ready. |
 | **GPU out of memory** | Detects OOM, retries with delay, re-queues on persistent failure. |
 | **Duplicate frames** | pHash dedup skips identical screenshots (threshold: 8 hamming distance). |
@@ -716,9 +681,9 @@ MIT License — see [LICENSE](LICENSE) for details.
 
 <br>
 
-**Built with 🧠 Gemma 4 E2B · 🔒 100% Local · 🚀 Zero Cloud Dependencies**
+**Built with 🔒 Privacy-First · 🧠 Flexible LLM Backend · 🚀 Your Data Stays Local**
 
-*Vision + Audio + Reasoning — all three modalities, one model, your machine.*
+*Configurable LLM endpoint (local or cloud) + local MiniLM embeddings.*
 
 <br>
 
