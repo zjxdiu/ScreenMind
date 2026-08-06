@@ -67,10 +67,10 @@ async def delete_activity(activity_id: int):
 
 @router.post("/activities/{activity_id}/reanalyze")
 async def reanalyze_activity(activity_id: int):
-    """Re-run Gemma analysis + layout detection on a single activity."""
+    """Re-run analysis on a single activity."""
     conn = db._get_conn()
     row = conn.execute(
-        "SELECT screenshot_path, ocr_text, ocr_boxes, detected_app_name, window_title FROM activities WHERE id = ?",
+        "SELECT screenshot_path, ocr_text, ocr_boxes, detected_app, window_title FROM activities WHERE id = ?",
         (activity_id,),
     ).fetchone()
     if not row:
@@ -89,7 +89,7 @@ async def reanalyze_activity(activity_id: int):
         from screenmind.privacy.encryption import open_image as _enc_open
         img = _enc_open(ss_path)
 
-        # Re-run Gemma analysis (respects analysis_mode setting)
+        # Re-run analysis (respects analysis_mode setting)
         ocr_text = row[1] or ""
         app_name = row[3] or None
         window_title = row[4] or None
