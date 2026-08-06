@@ -74,7 +74,7 @@ _ALLOWED_OVERRIDES = {
     "auto_pause_heavy_apps", "heavy_apps",
     "defer_analysis", "meeting_transcription",
     "meeting_apps",
-    "active_model", "retention_days",
+    "retention_days",
     "obsidian_enabled", "obsidian_vault_path",
     "notion_enabled", "notion_token", "notion_database_id",
     "webhook_enabled", "webhook_url", "webhook_events", "webhook_secret", "webhook_headers",
@@ -88,6 +88,8 @@ _ALLOWED_OVERRIDES = {
     "capture_active_monitor",
     "setup_complete",
     "capture_paused",
+    "llm_api_base_url", "llm_api_key", "llm_model_name", "llm_api_concurrency",
+    "embed_api_base_url", "embed_api_key", "embed_api_batch_size",
 }
 
 # Lock to prevent concurrent read-modify-write races on settings.json
@@ -136,34 +138,27 @@ class Settings(BaseSettings):
         default="gemma4:e2b",
         description="Model name to use with custom LLM API",
     )
-    # Legacy fields kept for settings.json compatibility
-    gemma_mode: Literal["local", "api"] = Field(
-        default="local",
-        description="'local' for llama-server, 'api' for Google AI Studio (sends data to Google)",
+    # Embedding model API (separate from main LLM, OpenAI-compatible embeddings endpoint)
+    embed_api_base_url: str = Field(
+        default="http://localhost:11434/v1",
+        description="Base URL for embedding API endpoint (OpenAI-compatible)",
     )
-    ollama_model: str = Field(
-        default="gemma4:e2b",
-        description="Model identifier (legacy field, kept for settings.json compat)",
-    )
-    active_model: str = Field(
-        default="gemma-4-e2b",
-        description="Active model key (legacy, kept for compat)",
-    )
-    ollama_host: str = Field(
-        default="http://localhost:11434",
-        description="Legacy Ollama host (unused, kept for compat)",
-    )
-    llama_server_host: str = Field(
-        default="http://127.0.0.1:5809",
-        description="llama-server URL (legacy, kept for compat)",
-    )
-    llama_server_port: int = Field(
-        default=5809,
-        description="llama-server port (legacy, kept for compat)",
-    )
-    google_api_key: Optional[str] = Field(
+    embed_api_key: Optional[str] = Field(
         default=None,
-        description="Google AI Studio API key (for api mode)",
+        description="API key for embedding endpoint (leave empty if not required)",
+    )
+    # Concurrency settings
+    llm_api_concurrency: int = Field(
+        default=1,
+        description="Number of concurrent LLM API calls (for parallel task processing)",
+        ge=1,
+        le=10,
+    )
+    embed_api_batch_size: int = Field(
+        default=8,
+        description="Batch size for embedding API calls",
+        ge=1,
+        le=32,
     )
 
     # ── Developer Context ────────────────────────────────────────────────

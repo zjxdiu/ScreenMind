@@ -111,7 +111,7 @@ async def main():
 
     _safe_print("=" * 60)
     _safe_print("  ScreenMind — Privacy-First Screen Activity Journal")
-    _safe_print("  Powered by Gemma 4 E2B (100% Local)")
+    _safe_print("  Powered by OpenAI-Compatible LLM API")
     _safe_print("=" * 60)
     _safe_print()
 
@@ -160,21 +160,14 @@ async def main():
 
     logger.info(f"Data directory: {settings.data_path}")
     logger.info(f"Capture interval: {settings.capture_interval}s")
-    logger.info(f"Model: {settings.active_model} ({settings.gemma_mode} mode)")
+    logger.info(f"LLM Model: {settings.llm_model_name} via API at {settings.llm_api_base_url}")
     if settings.blocked_apps_list:
         logger.info(f"Privacy zones: {', '.join(settings.blocked_apps_list)}")
-    if settings.gemma_mode == "api":
-        _safe_print("")
-        _safe_print("=" * 70)
-        _safe_print("WARNING: gemma_mode=api — screenshots are sent to Google AI Studio!")
-        _safe_print("   This disables the local-only privacy guarantee.")
-        _safe_print("   Set GEMMA_MODE=local to keep all data on your machine.")
-        _safe_print("=" * 70)
     _safe_print()
 
     # ── LLM API health check ─────────────────────────────────────────────
-    from screenmind.engine import model_manager, llm_client
-    
+    from screenmind.engine import llm_client
+
     # Check if custom LLM API endpoint is reachable
     if llm_client.is_available():
         logger.info(f"OK - LLM API endpoint online at {settings.llm_api_base_url}")
@@ -209,7 +202,16 @@ async def main():
         if cleaned["activities"] > 0 or cleaned["meetings"] > 0:
             logger.info(f"Retention cleanup: removed {cleaned['activities']} activities, "
                   f"{cleaned['meetings']} meetings older than {settings.retention_days} days")
+    
+    # Initialize embedder and check API availability (required for vector compatibility)
     embedder = Embedder()
+    if not embedder.is_available:
+        logger.critical(
+            f"Embedding API unavailable at {settings.embed_api_base_url}. "
+            "Semantic search requires the embedding API to be running. "
+            "Please ensure the embedding service is started and accessible."
+        )
+        sys.exit(1)
 
     # Thread-safe shutdown flag (checked by voice transcription thread before DB writes)
     _shutdown = threading.Event()

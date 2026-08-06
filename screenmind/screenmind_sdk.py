@@ -345,19 +345,17 @@ def clear_state(key: str = None, agent_name: str = None):
 
 # ── LLM Access ───────────────────────────────────────────────────────
 
-def ask_gemma(prompt: str, include_recent: bool = False, max_tokens: int = 512) -> str:
-    """Ask Gemma a question. Waits for GPU to be idle (up to 60s).
+def ask_llm(prompt: str, include_recent: bool = False, max_tokens: int = 512) -> str:
+    """Ask the configured LLM a question via API. Waits for LLM to be idle (up to 60s).
 
     Never cancels running screen analysis — waits or times out.
-    On constrained hardware (≤4GB VRAM), this may be slow during active capture.
-    Consider upgrading to 8GB+ VRAM for responsive agent inference.
-
+    
     Args:
-        prompt: The question/instruction for Gemma
+        prompt: The question/instruction for the LLM
         include_recent: If True, prepend recent activity summaries as context
         max_tokens: Max output tokens (default 512)
 
-    Returns: Gemma's text response
+    Returns: LLM's text response
 
     Raises: RuntimeError if LLM is busy for >60s
     """
@@ -384,7 +382,7 @@ def ask_gemma(prompt: str, include_recent: bool = False, max_tokens: int = 512) 
     else:
         raise RuntimeError(
             "LLM is busy with screen analysis. "
-            "Try again later, or upgrade to 8GB+ VRAM for concurrent agent inference."
+            "Try again later."
         )
 
     # Run inference
@@ -395,7 +393,11 @@ def ask_gemma(prompt: str, include_recent: bool = False, max_tokens: int = 512) 
             max_tokens=max_tokens,
         )
     except Exception as e:
-        raise RuntimeError(f"Gemma inference failed: {e}")
+        raise RuntimeError(f"LLM inference failed: {e}")
+
+
+# Backward compatibility alias
+ask_gemma = ask_llm
 
 
 # ── Utility ──────────────────────────────────────────────────────────

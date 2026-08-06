@@ -116,13 +116,16 @@ class AnalysisWorker:
         self._priority_items: deque = deque()
 
     def _ensure_embedder(self):
-        """Lazy-load the embedding model."""
+        """Initialize the embedding API client."""
         if self._embedder is None and self._embedder_available:
             try:
                 self._embedder = Embedder()
-                self._embedder._ensure_model()  # Pre-load
+                # Check availability (will be done at startup in main.py)
+                if not self._embedder.is_available:
+                    logger.warning("Embedding API unavailable — embeddings will be skipped")
+                    self._embedder_available = False
             except Exception as e:
-                logger.warning(f"Embedder unavailable: {e}")
+                logger.warning(f"Embedder initialization failed: {e}")
                 self._embedder_available = False
 
     async def run(self):
