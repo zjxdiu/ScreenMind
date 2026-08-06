@@ -1,6 +1,6 @@
 """
-Gemma 4 Screenshot Analyzer
-Sends screenshots to Gemma 4 via llama-server and parses structured activity data.
+Screenshot Analyzer
+Sends screenshots to LLM via custom OpenAI-compatible API endpoint and parses structured activity data.
 The core intelligence engine of ScreenMind.
 
 Three analysis methods:
@@ -43,12 +43,12 @@ VALID_MOODS = {"productive", "distracted", "collaborative", "learning", "neutral
 
 
 # ── App Reconciliation Data ──────────────────────────────────────────────────
-# Three-signal reconciliation: OS process name + window title + Gemma vision.
+# Three-signal reconciliation: OS process name + window title + model vision.
 # See: https://github.com/ayushh0110/ScreenMind/issues/6
 
 # Process names that are generic wrappers/runtimes — they tell us nothing
 # about the actual application.  When the OS returns one of these, we skip it
-# and fall back to window-title extraction or Gemma's visual guess.
+# and fall back to window-title extraction or model's visual guess.
 GENERIC_PROCESS_NAMES = frozenset({
     # Language runtimes
     "electron", "java", "javaw", "python", "pythonw", "python3",
@@ -63,9 +63,9 @@ GENERIC_PROCESS_NAMES = frozenset({
 })
 
 # Known process names → correct activity_category.
-# Used to override Gemma's category for NON-BROWSER windows only.
+# Used to override model's category for NON-BROWSER windows only.
 # Browsers are detected via title suffix (see _BROWSER_TITLE_SUFFIXES)
-# and always trust Gemma's content-aware category.
+# and always trust model's content-aware category.
 KNOWN_APP_CATEGORIES = {
     # Terminal emulators (most commonly misidentified as "coding")
     "alacritty": "terminal", "kitty": "terminal", "wezterm": "terminal",
@@ -111,7 +111,7 @@ _FILE_EXTENSIONS = frozenset({
 })
 
 # Window title suffixes that identify a browser window.
-# When detected, Gemma's activity_category is trusted because it reflects
+# When detected, model's activity_category is trusted because it reflects
 # the *content* being viewed (YouTube → media, Gmail → communication),
 # which is more useful than a generic "browsing" override.
 _BROWSER_TITLE_SUFFIXES = (
@@ -182,22 +182,22 @@ def _extract_simple_title(window_title: str) -> Optional[str]:
     return title
 
 
-def _is_more_specific_name(hierarchy_name_lower: str, gemma_name_lower: str) -> bool:
-    """Check if Gemma's name is a more specific (friendlier) version.
+def _is_more_specific_name(hierarchy_name_lower: str, model_name_lower: str) -> bool:
+    """Check if model's name is a more specific (friendlier) version.
 
     Uses word-boundary matching to prevent false positives like
     ``st`` matching ``steam`` or ``vim`` matching ``neovim``.
 
     Examples:
-      ("code",  "vs code")       → True  (Gemma is more specific)
+      ("code",  "vs code")       → True  (model is more specific)
       ("chrome", "google chrome") → True
       ("st",    "steam")         → False (not a word-boundary match)
       ("vim",   "neovim")        → False
     """
-    if len(gemma_name_lower) <= len(hierarchy_name_lower):
-        return False  # Gemma is same length or shorter — not more specific
+    if len(model_name_lower) <= len(hierarchy_name_lower):
+        return False  # model is same length or shorter — not more specific
     pattern = r'\b' + re.escape(hierarchy_name_lower) + r'\b'
-    return bool(re.search(pattern, gemma_name_lower))
+    return bool(re.search(pattern, model_name_lower))
 
 
 def _is_browser_window(
@@ -296,9 +296,9 @@ scene_description: list EVERY visible item individually. Do NOT summarize.
 Return ONLY valid JSON."""
 
 
-class GemmaAnalyzer:
+class LLMAnalyzer:
     """
-    Analyzes screenshots using Gemma 4 via llama-server.
+    Analyzes screenshots using LLM via custom OpenAI-compatible API endpoint.
     Handles image encoding, prompt construction, response parsing,
     and graceful error recovery.
     """
@@ -307,13 +307,13 @@ class GemmaAnalyzer:
         self._initialized = False
 
     def _ensure_client(self):
-        """Check llama-server is reachable."""
+        """Check custom LLM API endpoint is reachable."""
         if not self._initialized:
             if llm_client.is_available():
                 self._initialized = True
-                logger.info(f"Connected to llama-server at {settings.llama_server_host}")
+                logger.info(f"Connected to LLM API at {settings.llm_api_base_url}")
             else:
-                raise ConnectionError(f"Cannot reach llama-server at {settings.llama_server_host}")
+                raise ConnectionError(f"Cannot reach LLM API at {settings.llm_api_base_url}")
 
     def analyze_screenshot(
         self,
@@ -343,7 +343,7 @@ class GemmaAnalyzer:
             hints.append(f"URLs visible in screenshot: {', '.join(active_urls)}")
         if ocr_text:
             # Strategy B: unique words, noise removed — reduces token count
-            # while preserving vocabulary for Gemma to identify app/content
+            # while preserving vocabulary for model to identify app/content
             words = ocr_text.lower().split()
             words = [w for w in words if len(w) > 2]
             filtered_ocr = ' '.join(sorted(set(words)))
@@ -351,7 +351,7 @@ class GemmaAnalyzer:
         if hints:
             prompt += f"\n\nContext: {chr(10).join(hints)}"
 
-        # Convert image to bytes for llama-server
+        # Convert image to bytes for API
         image_bytes = self._image_to_bytes(image)
 
         start_time = time.time()
@@ -401,7 +401,7 @@ class GemmaAnalyzer:
 
         Same prompt as fast mode (SPLIT_ANALYSIS_PROMPT — analysis only),
         but called via chat_with_images() without the prefill trick,
-        allowing Gemma to think naturally. Produces richer scene_description
+        allowing the model to think naturally. Produces richer scene_description
         and activity_summary than fast mode.
 
         Layout regions are computed separately via cluster_ocr_layout().
@@ -496,7 +496,7 @@ class GemmaAnalyzer:
             {"role": "assistant", "content": "<think>\n</think>\n"},
         ]
 
-        # Flow: Gemma → parse → repair → regex → retry inference → fail
+        # Flow: model → parse → repair → regex → retry inference → fail
         for attempt in range(2):
             start_time = time.time()
             try:
@@ -537,7 +537,7 @@ class GemmaAnalyzer:
         Returns ActivityRecord on success, None if everything fails.
 
         Flow:
-          1. Extract JSON string from raw Gemma output
+          1. Extract JSON string from raw model output
           2. Try json.loads() — if good, return
           3. Try _repair_json() — fix common issues, re-parse — if good, return
           4. Try _regex_fallback() — salvage individual fields — if good, return
@@ -577,8 +577,8 @@ class GemmaAnalyzer:
 
     def _image_to_bytes(self, image: Image.Image) -> bytes:
         """
-        Convert PIL Image to JPEG bytes, resized for optimal Gemma 4 input.
-        768px balances quality vs VRAM usage on 4GB GPUs.
+        Convert PIL Image to JPEG bytes, resized for optimal LLM vision input.
+        768px balances quality vs token usage.
         """
         # Resize if larger than 768px (fits 4GB VRAM)
         max_dim = 768
@@ -675,14 +675,14 @@ class GemmaAnalyzer:
         window_title: Optional[str] = None,
     ) -> ActivityRecord:
         """
-        Parse Gemma 4's response into an ActivityRecord.
+        Parse LLM response into an ActivityRecord.
         Handles various response formats:
         1. Clean JSON
         2. JSON wrapped in markdown code blocks
         3. JSON with thinking/explanation text before/after
         4. Malformed JSON (regex fallback)
         """
-        # Strip the "thinking" part if present (Gemma 4 sometimes uses <think> tags)
+        # Strip the "thinking" part if present (some models use <think> tags)
         if "<think>" in raw and "</think>" in raw:
             raw = raw.split("</think>")[-1].strip()
 
@@ -713,21 +713,21 @@ class GemmaAnalyzer:
     ) -> ActivityRecord:
         """Normalize fields and reconcile app identity using three signals.
 
-        Hierarchy for app name (first non-empty wins, then compared with Gemma):
+        Hierarchy for app name (first non-empty wins, then compared with model):
           L1: Title " - " extraction  (most reliable pattern)
           L2: OS process name         (ground truth, skip generic wrappers)
           L3: Title simple extraction  (short clean title, for OS=None/generic)
-          L4: Gemma's visual guess     (last resort — kept as-is)
+          L4: model's visual guess     (last resort — kept as-is)
 
-        At whichever level we get a name, we compare with Gemma using word-boundary
-        substring matching.  If Gemma is a more specific version of our name
-        (e.g. OS='code' → Gemma='VS Code'), we keep Gemma's friendlier name.
+        At whichever level we get a name, we compare with model using word-boundary
+        substring matching.  If model is a more specific version of our name
+        (e.g. OS='code' → model='VS Code'), we keep model's friendlier name.
         Otherwise we use the hierarchy value.
 
         Category reconciliation:
-          - Browser windows → trust Gemma (content-aware: YouTube=media)
+          - Browser windows → trust model (content-aware: YouTube=media)
           - Known apps      → use KNOWN_APP_CATEGORIES override
-          - Unknown apps    → trust Gemma (no override info available)
+          - Unknown apps    → trust model (no override info available)
         """
         original_app = record.app_name
         original_cat = record.activity_category
@@ -751,25 +751,25 @@ class GemmaAnalyzer:
             if simple:
                 resolved_name = simple
 
-        # L4: Gemma's guess stays as-is (implicit — record.app_name unchanged)
+        # L4: model's guess stays as-is (implicit — record.app_name unchanged)
 
-        # ── Phase 2: Compare resolved name with Gemma's guess ────────
+        # ── Phase 2: Compare resolved name with model's guess ────────
         if resolved_name:
             resolved_lower = resolved_name.lower().strip()
-            gemma_lower = record.app_name.lower().strip()
-            if _is_more_specific_name(resolved_lower, gemma_lower):
-                pass  # Gemma is more specific (e.g., "code" → "VS Code") — keep it
+            model_lower = record.app_name.lower().strip()
+            if _is_more_specific_name(resolved_lower, model_lower):
+                pass  # model is more specific (e.g., "code" → "VS Code") — keep it
             else:
                 record.app_name = resolved_name
 
         # ── Phase 3+4: Category resolution ────────────────────────────
-        # Check known category override FIRST — if found, skip Gemma
+        # Check known category override FIRST — if found, skip model
         # normalization entirely (avoids wasted work when overriding).
         is_browser = _is_browser_window(window_title, app_name_hint)
         final_app = record.app_name
 
         if is_browser:
-            # Browser: trust Gemma's content-based category, just normalize it
+            # Browser: trust model's content-based category, just normalize it
             cat = record.activity_category.lower().strip()
             for valid in VALID_CATEGORIES:
                 if valid in cat:
@@ -780,10 +780,10 @@ class GemmaAnalyzer:
         else:
             known_cat = _lookup_known_category(final_app)
             if known_cat:
-                # Authoritative override — skip Gemma normalization
+                # Authoritative override — skip model normalization
                 record.activity_category = known_cat
             else:
-                # No override — normalize Gemma's raw category
+                # No override — normalize model's raw category
                 cat = record.activity_category.lower().strip()
                 for valid in VALID_CATEGORIES:
                     if valid in cat:
@@ -818,7 +818,7 @@ class GemmaAnalyzer:
         return record
 
     def _repair_json(self, broken: str) -> Optional[str]:
-        """Attempt to fix common JSON issues from Gemma output.
+        """Attempt to fix common JSON issues from model output.
         Handles: trailing commas, missing closing braces/brackets,
         truncated strings, and unescaped newlines.
         Returns repaired JSON string or None if unfixable."""
@@ -899,5 +899,5 @@ class GemmaAnalyzer:
         )
 
     def is_available(self) -> bool:
-        """Check if llama-server is reachable."""
+        """Check if LLM API endpoint is reachable."""
         return llm_client.is_available()
