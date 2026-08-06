@@ -1,17 +1,16 @@
 """
 Analysis Worker
-Consumes screenshots from the capture queue, sends them to Gemma 4,
+Consumes screenshots from the capture queue, sends them to LLM via custom API endpoint,
 enriches with developer context and semantic embeddings, then stores everything.
 
 Two analysis modes (configurable via settings.analysis_mode):
-  - "merged" (Accurate): Single LLM call with thinking (~76s). Gemma detects
-    layout regions + produces analysis in one pass. Best for complex layouts.
+  - "balanced": Thinking enabled for analysis only (no layout). ~40-50s, better quality.
   - "fast": No-thinking LLM call for analysis (~12s) + instant OCR-based
     layout clustering. 6x faster, no LLM needed for layout.
 
 Per-app pHash cache avoids redundant processing for similar screens:
-  - identical (diff <= 2): skip OCR + Gemma, reuse everything from cache
-  - minor (diff 3-7): reuse layout + Gemma analysis, re-run OCR
+  - identical (diff <= 2): skip OCR + LLM, reuse everything from cache
+  - minor (diff 3-7): reuse layout + LLM analysis, re-run OCR
   - full (diff > 7): run full pipeline
 """
 
@@ -27,7 +26,7 @@ from typing import Optional
 from PIL import Image
 
 from screenmind.config import settings
-from screenmind.engine.analyzer import GemmaAnalyzer
+from screenmind.engine.analyzer import LLMAnalyzer
 from screenmind.engine.dev_context import DevContextDetector
 from screenmind.engine.embedder import Embedder
 from screenmind.engine.llm_client import InferenceCancelled
@@ -82,8 +81,8 @@ def _extract_all_urls(text: str) -> list[str]:
 class AnalysisWorker:
     """
     Background worker that processes queued screenshots through the full pipeline:
-    1. OCR text extraction (fast, feeds into Gemma as context)
-    2. Gemma 4 analysis (merged or fast mode) + Layout detection (Gemma or OCR clustering)
+    1. OCR text extraction (fast, feeds into LLM as context)
+    2. LLM 4 analysis (merged or fast mode) + Layout detection (LLM or OCR clustering)
     3. Developer context enrichment (git integration)
     4. Semantic embedding generation
     5. Database storage
@@ -94,7 +93,7 @@ class AnalysisWorker:
     def __init__(self, queue: asyncio.Queue, database: Database):
         self._queue = queue
         self._db = database
-        self._analyzer = GemmaAnalyzer()
+        self._analyzer = LLMAnalyzer()
         self._dev_context = DevContextDetector()
         self._ocr = OCRExtractor()
         self._embedder: Optional[Embedder] = None
@@ -107,7 +106,7 @@ class AnalysisWorker:
         self._embedder_available = True
 
         # Per-app analysis cache: (app_name, title) -> cached results
-        # Avoids redundant Gemma calls for identical/similar screens
+        # Avoids redundant LLM calls for identical/similar screens
         self._app_cache: OrderedDict = OrderedDict()
         self._cache_hits = 0
         self._cache_skips = 0
@@ -252,11 +251,11 @@ class AnalysisWorker:
         try:
             logger.info(f"Processing #{activity_id} ({capture.app_name or 'unknown'})...")
 
-            # 2. Per-app cache check — skip OCR + Gemma for identical screens
+            # 2. Per-app cache check — skip OCR + LLM for identical screens
             #    Compare pHash against last analyzed frame for same (app, title).
             cache_key = (capture.app_name or "unknown", (capture.window_title or "")[:100])
             cached = self._app_cache.get(cache_key)
-            tier = "full"  # default: full Gemma call
+            tier = "full"  # default: full LLM call
 
             if cached and capture.phash and not capture.bookmarked:
                 phash_diff = capture.phash - cached["phash"]
@@ -371,11 +370,11 @@ class AnalysisWorker:
                 except Exception as e:
                     logger.warning(f"Sensitive filter error: {e}")
 
-            # 3d. Extract URLs from text (for Gemma hint + DB storage)
+            # 3d. Extract URLs from text (for LLM hint + DB storage)
             found_urls = _extract_all_urls(ocr_text)
             active_url = found_urls[0] if found_urls else None
 
-            # --- Tier "minor": run OCR (already done above), reuse Gemma + layout ---
+            # --- Tier "minor": run OCR (already done above), reuse LLM + layout ---
             if tier == "minor":
                 analysis = cached["analysis"]
                 layout_regions = cached["regions"]
@@ -397,16 +396,15 @@ class AnalysisWorker:
                 logger.info(f"Processing #{activity_id} [{tier_label}] ...")
                 # Falls through to: dev_context -> embedding -> DB update -> auto-bookmark
             else:
-                # --- Tier "full": run Gemma analysis + layout detection ---
+                # --- Tier "full": run LLM analysis + layout detection ---
                 tier_label = "full"
 
                 async def _run_analysis():
-                    """Gemma 4 analysis + layout with smart OOM retry."""
+                    """LLM 4 analysis + layout with smart OOM retry."""
                     OOM_KEYWORDS = {"memory", "oom", "resource", "allocat", "failed to load"}
                     _MODE_MAP = {
                         "fast": self._analyzer.analyze_screenshot_fast,
                         "balanced": self._analyzer.analyze_screenshot_balanced,
-                        "merged": self._analyzer.analyze_screenshot,
                     }
                     analyze_fn = _MODE_MAP.get(settings.analysis_mode, self._analyzer.analyze_screenshot_fast)
                     max_retries = 3
@@ -482,7 +480,7 @@ class AnalysisWorker:
                     try:
                         from screenmind.engine.layout_analyzer import organize_ocr_text, cluster_ocr_layout
                         screen_w, screen_h = capture.image.size
-                        # Use Gemma regions if available, otherwise OCR clustering
+                        # Use LLM regions if available, otherwise OCR clustering
                         regions = layout_regions if layout_regions else cluster_ocr_layout(ocr_boxes, screen_w, screen_h)
                         organized_text = organize_ocr_text(ocr_boxes, regions, screen_w, screen_h)
                         if organized_text:

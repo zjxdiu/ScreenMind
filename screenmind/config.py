@@ -203,9 +203,9 @@ class Settings(BaseSettings):
         ge=2048,
         le=16384,
     )
-    analysis_mode: Literal["fast", "balanced", "merged"] = Field(
+    analysis_mode: Literal["fast", "balanced"] = Field(
         default="fast",
-        description="'fast' (~12s, no thinking), 'balanced' (~40s, thinking), or 'merged' (~76s, thinking+layout)",
+        description="'fast' (~12s, no thinking) or 'balanced' (~40s, thinking). Accurate mode removed.",
     )
     kv_cache_quant: bool = Field(
         default=False,

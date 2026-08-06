@@ -901,3 +901,7 @@ class LLMAnalyzer:
     def is_available(self) -> bool:
         """Check if LLM API endpoint is reachable."""
         return llm_client.is_available()
+
+
+# Backward compatibility alias
+GemmaAnalyzer = LLMAnalyzer

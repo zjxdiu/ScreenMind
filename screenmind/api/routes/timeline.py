@@ -103,7 +103,6 @@ async def reanalyze_activity(activity_id: int):
             _MODE_MAP = {
                 "fast": analyzer.analyze_screenshot_fast,
                 "balanced": analyzer.analyze_screenshot_balanced,
-                "merged": analyzer.analyze_screenshot,
             }
             analyze_fn = _MODE_MAP.get(app_settings.analysis_mode, analyzer.analyze_screenshot_fast)
             record, layout_regions = await asyncio.wait_for(
